@@ -20,7 +20,7 @@ name:               Domain
 -- PVP summary:     +-+------- breaking API changes
 --                  | | +----- non-breaking API additions
 --                  | | | +--- code changes with no API change
-version:            0.1.0.0
+version:            1.0.0.0
 
 -- A short (one-line) description of the package.
 -- synopsis:
@@ -58,16 +58,16 @@ library
     import:           warnings
 
     -- Modules exported by the library.
-    exposed-modules:  MyLib
+    exposed-modules:  Domain
 
     -- Modules included in this library but not exported.
-    -- other-modules:
+    other-modules: Path
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.15.1.0
+    build-depends:    base, network
 
     -- Directories containing source files.
     hs-source-dirs:   src
@@ -95,9 +95,9 @@ test-suite Domain-test
     hs-source-dirs:   test
 
     -- The entrypoint to the test suite.
-    main-is:          Main.hs
+    main-is:          Domain.hs
 
     -- Test dependencies.
     build-depends:
-        base ^>=4.15.1.0,
-        Domain
+        base
+        , Domain
