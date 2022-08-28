@@ -24,7 +24,7 @@ newtype Directories = Directories [Directory]
 
 instance Show Directories where
     show (Directories dirs) =
-        foldl (\acc dir -> acc ++ "/" ++ (show dir)) "" dirs
+        foldl (\acc dir -> acc ++ "/" ++ show dir) "" dirs
 
 newtype Directory = Directory String
 
@@ -77,7 +77,7 @@ directory :: String -> Maybe Directory
 directory str = 
     if null str 
     then Nothing 
-    else (Just $ Directory str)
+    else Just $ Directory str
 
 file :: String -> Extension -> Maybe File
 file str ext =
