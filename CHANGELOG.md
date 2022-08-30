@@ -1,4 +1,4 @@
-# Revision history for Domain
+# Revision history for domain-simple
 
 ## 0.1.0.0 -- YYYY-mm-dd
 

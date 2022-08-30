@@ -1,13 +1,13 @@
-module Domain where
+module WebURL where
 
 import Data.Maybe()
 import qualified Path as P
 
-data Domain
-    = Domain Protocol Host TopLevel P.Path Arguments
+data URL
+    = URL Protocol Host TopLevel P.Path Arguments
 
-instance Show Domain where
-    show (Domain (Protocol scheme) host topLevel path arguments) =
+instance Show URL where
+    show (URL (Protocol scheme) host topLevel path arguments) =
         show scheme ++ show host ++ show topLevel ++ show path ++ "?" ++ show arguments
             
 newtype Protocol = Protocol Scheme
@@ -71,6 +71,6 @@ argument :: Key -> Value -> Argument
 argument key value =
     Argument (key, value)
 
-domain :: Protocol -> Host -> TopLevel ->  P.Path -> Arguments -> Domain
-domain =
-    Domain 
+url :: Protocol -> Host -> TopLevel ->  P.Path -> Arguments -> URL
+url =
+    URL 
