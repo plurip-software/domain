@@ -1,6 +1,7 @@
-module WebURL where
+{-# LANGUAGE InstanceSigs #-}
+module WebUrl where
 
-import Data.Maybe(catMaybes)
+import Data.Maybe (mapMaybe)
 import qualified Path as P
 import Data.List (intercalate)
 import Data.List.Split (splitOn)
@@ -15,6 +16,7 @@ data URL
     | URL'' Protocol Domain
 
 instance Show URL where
+    show :: URL -> String
     show (URL protocol domain path arguments) =
         show protocol ++ "://" ++ show domain ++ "/" ++ show path ++ "?" ++ show arguments
     show (URL' protocol domain path) =
@@ -32,6 +34,7 @@ instance Show URL where
 newtype Protocol = Protocol Scheme
 
 instance Show Protocol where
+    show :: Protocol -> String
     show (Protocol scheme) = show scheme
 
 data Domain
@@ -39,37 +42,27 @@ data Domain
     | DomainIP Host
 
 instance Show Domain where
+    show :: Domain -> String
     show (Domain host toplevel) = show host ++ "." ++ show toplevel
     show (DomainIP host) = show host
 
-instance Parser Domain where
-    stringify = show
-    parse domStr =
-        if length domStr > 0 then
-            case splitOn "." of
-                [] -> Nothing
-                host 
-        else Nothing
-    
+-- instance Parser Domain where
+--     stringify = show
+--     parse domStr =
+--         if length domStr > 0 then
+--             case splitOn "." of
+--                 [] -> Nothing
+--                 host 
+--         else Nothing
+
 data Host 
     = DNS String 
     | IP4 (Int, Int, Int, Int)
 
 instance Show Host where
+    show :: Host -> String
     show (DNS dns) = dns 
     show (IP4 (ip40, ip41, ip42, ip43)) = show ip40 ++ "." ++ show ip41 ++ "." ++ show ip42 ++ "." ++ show ip43
-
-instance Parser Host where
-    stringify = show
-    parse hostStr = 
-        if length hostStr > 0 then
-            case splitOn "." hostStr of
-                [ip40, ip41, ip42, ip43] -> 
-                    case map readMaybe $ [ip40, ip41, ip42, ip43] of
-                        [Just ip40_, Just ip41_, Just ip42_, Just ip43_] -> Just $ IP4 (ip40_, ip41_, ip42_, ip43_)
-                        _ -> Nothing
-                dns                      -> Just . DNS . intercalate "." $ dns 
-        else Nothing
 
 data TopLevel
     = Com
@@ -80,6 +73,7 @@ data TopLevel
     | De
 
 instance Show TopLevel where
+    show :: TopLevel -> String
     show Com = "com" 
     show Org = "org" 
     show Edu = "edu" 
@@ -88,7 +82,10 @@ instance Show TopLevel where
     show De  = "de" 
 
 instance Parser TopLevel where
+    stringify :: TopLevel -> String
     stringify = show
+    
+    parse :: String -> Maybe TopLevel
     parse "com" = Just Com 
     parse "org" = Just Org 
     parse "edu" = Just Edu 
@@ -102,11 +99,15 @@ data Scheme
     | HTTPS
 
 instance Show Scheme where
+    show :: Scheme -> String
     show HTTP = "http"
     show HTTPS = "https"
 
 instance Parser Scheme where
+    stringify :: Scheme -> String
     stringify = show
+    
+    parse :: String -> Maybe Scheme
     parse "http"  = Just HTTP
     parse "https" = Just HTTPS
     parse _ = Nothing
@@ -114,22 +115,30 @@ instance Parser Scheme where
 newtype Arguments = Arguments [Argument]
 
 instance Show Arguments where
+    show :: Arguments -> String
     show (Arguments arguments) = intercalate "&" (map show arguments)
 
 instance Parser Arguments where
+    stringify :: Arguments -> String
     stringify = show
+
+    parse :: String -> Maybe Arguments
     parse argsStr = 
         case splitOn "&" argsStr of
             []   -> Nothing
-            args -> Just . Arguments. catMaybes $ map (\arg -> parse arg :: Maybe Argument) args
+            args -> Just . Arguments $ mapMaybe (\arg -> parse arg :: Maybe Argument) args
 
 newtype Argument = Argument (Key, Value)
 
 instance Show Argument where
+    show :: Argument -> String
     show (Argument (key, value)) = show key ++ "=" ++ show value
 
 instance Parser Argument where
+    stringify :: Argument -> String
     stringify = show
+    
+    parse :: String -> Maybe Argument
     parse argStr = 
         case splitOn "=" argStr of
             [key, value] -> Just $ Argument (Key key, Value value)
@@ -138,11 +147,13 @@ instance Parser Argument where
 newtype Key = Key String
 
 instance Show Key where
+    show :: Key -> String
     show (Key key) = key
 
 newtype Value = Value String
 
 instance Show Value where
+    show :: Value -> String
     show (Value value) = value
 
 https :: Protocol 
