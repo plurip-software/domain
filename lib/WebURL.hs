@@ -1,10 +1,14 @@
 {-# LANGUAGE InstanceSigs #-}
-module WebUrl where
+{-# LANGUAGE StrictData   #-}
 
+module WebURL where
+
+import           Data.List       (intercalate)
+import           Data.List.Split (splitOn)
+import           Helper          (svLast)
+import qualified Path            as P
+import           Text.Read       (readMaybe)
 import Data.Maybe (mapMaybe)
-import qualified Path as P
-import Data.List (intercalate)
-import Data.List.Split (splitOn)
 
 class Parser a where
     stringify :: a -> String
@@ -26,11 +30,11 @@ instance Show URL where
 
 -- instance Parser URL where
 --     stringify = show
---     parse urlString =  
+--     parse urlString =
 
         -- get arguments, rest --> split by "?"
-        -- get partitionsRest ->  
-            
+        -- get partitionsRest ->
+
 newtype Protocol = Protocol Scheme
 
 instance Show Protocol where
@@ -44,7 +48,7 @@ data Domain
 instance Show Domain where
     show :: Domain -> String
     show (Domain host toplevel) = show host ++ "." ++ show toplevel
-    show (DomainIP host) = show host
+    show (DomainIP host)        = show host
 
 -- instance Parser Domain where
 --     stringify = show
@@ -52,17 +56,46 @@ instance Show Domain where
 --         if length domStr > 0 then
 --             case splitOn "." of
 --                 [] -> Nothing
---                 host 
+--                 host
 --         else Nothing
 
-data Host 
-    = DNS String 
+data Host
+    = DNS String
     | IP4 (Int, Int, Int, Int)
 
 instance Show Host where
     show :: Host -> String
-    show (DNS dns) = dns 
+    show (DNS dns) = dns
     show (IP4 (ip40, ip41, ip42, ip43)) = show ip40 ++ "." ++ show ip41 ++ "." ++ show ip42 ++ "." ++ show ip43
+
+instance Parser Host where
+    stringify :: Host -> String
+    stringify = show
+
+    parse :: String -> Maybe Host
+    parse "" = Nothing
+    parse hostStr =
+        let
+            spltStr :: Either [Int] [String]
+            spltStr = 
+                case mapMaybe (\str -> readMaybe str :: Maybe Int) $ splitOn "." hostStr of
+                    []   -> Right $ splitOn "." hostStr
+                    ints -> Left ints
+        in
+        if length spltStr == 4
+        then
+            case spltStr of
+                Left [ip40, ip41, ip42, ip43] -> Just $ IP4 (ip40, ip41, ip42, ip43)
+                Left _ -> Nothing
+                Right spltStr_                ->
+                    case svLast spltStr_ of
+                        Just ext -> 
+                            case (parse ext :: Maybe TopLevel) of
+                                Nothing -> Nothing
+                                Just _ -> Just . DNS $ intercalate "."  spltStr_
+                        Nothing -> Nothing
+                        
+        else Nothing
 
 data TopLevel
     = Com
@@ -74,43 +107,43 @@ data TopLevel
 
 instance Show TopLevel where
     show :: TopLevel -> String
-    show Com = "com" 
-    show Org = "org" 
-    show Edu = "edu" 
-    show Gov = "gov" 
-    show Net = "net" 
-    show De  = "de" 
+    show Com = "com"
+    show Org = "org"
+    show Edu = "edu"
+    show Gov = "gov"
+    show Net = "net"
+    show De  = "de"
 
 instance Parser TopLevel where
     stringify :: TopLevel -> String
     stringify = show
-    
-    parse :: String -> Maybe TopLevel
-    parse "com" = Just Com 
-    parse "org" = Just Org 
-    parse "edu" = Just Edu 
-    parse "gov" = Just Gov 
-    parse "net" = Just Net 
-    parse "de" = Just De 
-    parse _ = Nothing
 
-data Scheme 
+    parse :: String -> Maybe TopLevel
+    parse "com" = Just Com
+    parse "org" = Just Org
+    parse "edu" = Just Edu
+    parse "gov" = Just Gov
+    parse "net" = Just Net
+    parse "de"  = Just De
+    parse _     = Nothing
+
+data Scheme
     = HTTP
     | HTTPS
 
 instance Show Scheme where
     show :: Scheme -> String
-    show HTTP = "http"
+    show HTTP  = "http"
     show HTTPS = "https"
 
 instance Parser Scheme where
     stringify :: Scheme -> String
     stringify = show
-    
+
     parse :: String -> Maybe Scheme
     parse "http"  = Just HTTP
     parse "https" = Just HTTPS
-    parse _ = Nothing
+    parse _       = Nothing
 
 newtype Arguments = Arguments [Argument]
 
@@ -123,10 +156,10 @@ instance Parser Arguments where
     stringify = show
 
     parse :: String -> Maybe Arguments
-    parse argsStr = 
+    parse argsStr =
         case splitOn "&" argsStr of
             []   -> Nothing
-            args -> Just . Arguments $ mapMaybe (\arg -> parse arg :: Maybe Argument) args
+            args -> Just . Arguments $ mapMaybe parse args
 
 newtype Argument = Argument (Key, Value)
 
@@ -137,9 +170,9 @@ instance Show Argument where
 instance Parser Argument where
     stringify :: Argument -> String
     stringify = show
-    
+
     parse :: String -> Maybe Argument
-    parse argStr = 
+    parse argStr =
         case splitOn "=" argStr of
             [key, value] -> Just $ Argument (Key key, Value value)
             _            -> Nothing
@@ -156,7 +189,7 @@ instance Show Value where
     show :: Value -> String
     show (Value value) = value
 
-https :: Protocol 
+https :: Protocol
 https = Protocol HTTPS
 
 dotCom :: TopLevel
@@ -166,14 +199,14 @@ urlDNS' :: Scheme -> String -> TopLevel -> P.Path -> Maybe URL
 urlDNS' scheme_ host_ topLvl path_ =
     case domainDNS host_ topLvl of
         Just domain_ -> Just $ URL' (Protocol scheme_) domain_ path_
-        _            -> Nothing  
+        _            -> Nothing
 
-domainDNS :: String -> TopLevel -> Maybe Domain 
-domainDNS host_ topLvl = 
-    if length host_ > 1 
+domainDNS :: String -> TopLevel -> Maybe Domain
+domainDNS host_ topLvl =
+    if length host_ > 1
     then Just $ Domain (DNS host_) topLvl
     else Nothing
 
 domainIP :: (Int, Int, Int, Int) -> Domain
-domainIP ip4 = 
-    DomainIP $ IP4 ip4
+domainIP =
+    DomainIP . IP4
