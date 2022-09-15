@@ -41,31 +41,30 @@ instance Show Protocol where
     show :: Protocol -> String
     show (Protocol scheme) = show scheme
 
-data Domain
-    = Domain Host TopLevel
-    | DomainIP Host
+newtype Domain = Domain Host 
 
 instance Show Domain where
     show :: Domain -> String
-    show (Domain host toplevel) = show host ++ "." ++ show toplevel
-    show (DomainIP host)        = show host
+    show (Domain host) = show host
 
--- instance Parser Domain where
---     stringify = show
---     parse domStr =
---         if length domStr > 0 then
---             case splitOn "." of
---                 [] -> Nothing
---                 host
---         else Nothing
+instance Parser Domain where
+    stringify = show
+    parse "" = Nothing
+    parse domStr =
+        case splitOn "." domStr of
+            [] -> Nothing
+            _  -> 
+                case (parse domStr :: Maybe Host) of
+                    Just host_ -> Just $ Domain host_
+                    _          -> Nothing
 
 data Host
-    = DNS String
+    = DNS String TopLevel
     | IP4 (Int, Int, Int, Int)
 
 instance Show Host where
     show :: Host -> String
-    show (DNS dns) = dns
+    show (DNS dns topLvl) = dns ++ "." ++ show topLvl
     show (IP4 (ip40, ip41, ip42, ip43)) = show ip40 ++ "." ++ show ip41 ++ "." ++ show ip42 ++ "." ++ show ip43
 
 instance Parser Host where
@@ -91,8 +90,8 @@ instance Parser Host where
                     case svLast spltStr_ of
                         Just ext -> 
                             case (parse ext :: Maybe TopLevel) of
-                                Nothing -> Nothing
-                                Just _ -> Just . DNS $ intercalate "."  spltStr_
+                                Nothing   -> Nothing
+                                Just ext_ -> Just $ DNS (intercalate "."  spltStr_) ext_
                         Nothing -> Nothing
                         
         else Nothing
@@ -195,18 +194,17 @@ https = Protocol HTTPS
 dotCom :: TopLevel
 dotCom = Com
 
-urlDNS' :: Scheme -> String -> TopLevel -> P.Path -> Maybe URL
-urlDNS' scheme_ host_ topLvl path_ =
-    case domainDNS host_ topLvl of
+urlDNS' :: Scheme -> String -> P.Path -> Maybe URL
+urlDNS' scheme_ host_  path_ =
+    case domainDNS host_ of
         Just domain_ -> Just $ URL' (Protocol scheme_) domain_ path_
         _            -> Nothing
 
-domainDNS :: String -> TopLevel -> Maybe Domain
-domainDNS host_ topLvl =
-    if length host_ > 1
-    then Just $ Domain (DNS host_) topLvl
-    else Nothing
+domainDNS :: String -> Maybe Domain
+domainDNS "" = Nothing
+domainDNS host_ =
+        parse host_
 
 domainIP :: (Int, Int, Int, Int) -> Domain
 domainIP =
-    DomainIP . IP4
+    Domain . IP4
